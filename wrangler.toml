@@ -2,11 +2,5 @@ name = "vscode-tunnel"
 main = "src/index.js"
 compatibility_date = "2024-03-12"
 
-[build]
-command = "node setup-worker.js"
-
 [vars]
 WORKER_ENVIRONMENT = "production"
-
-[triggers]
-crons = ["*/5 * * * *"]  # Run every 5 minutes to keep alive
