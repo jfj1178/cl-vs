@@ -2,15 +2,11 @@ name = "vscode-tunnel"
 main = "src/index.js"
 compatibility_date = "2024-03-12"
 
+[build]
+command = "node setup-worker.js"
+
 [vars]
-# These will be populated from .env during deployment
-VSCODE_SERVER = ""
-AUTH_TOKEN = ""
+WORKER_ENVIRONMENT = "production"
 
-# Development environment
-[env.development]
-vars = { }
-
-# Production environment
-[env.production]
-vars = { }
+[triggers]
+crons = ["*/5 * * * *"]  # Run every 5 minutes to keep alive
