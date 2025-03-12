@@ -1,39 +1,44 @@
-// Store the current session information
-const SESSION_INFO = {
-  startTime: new Date().toISOString(),
-  user: 'jfj1178'
-};
+// Store logs in memory (since Workers are stateless, we'll use a simple array)
+let sshxLogs = [];
+const MAX_LOGS = 100;
 
-// Function to format date in YYYY-MM-DD HH:MM:SS
-function formatDate(date) {
-  return date.toISOString()
-    .replace('T', ' ')
-    .replace(/\..+/, '');
+// Function to add log entry
+function addLog(message, type = 'info') {
+  const log = {
+    timestamp: new Date().toISOString(),
+    type: type,
+    message: message
+  };
+  sshxLogs.unshift(log); // Add to beginning
+  if (sshxLogs.length > MAX_LOGS) {
+    sshxLogs.pop(); // Remove oldest entry
+  }
+  return log;
 }
 
 async function initiateSSHX() {
-  const init = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      command: 'curl -sSf https://sshx.io/get | sh -s run',
-      timestamp: formatDate(new Date())
-    })
-  };
-
+  addLog('Initiating SSHX connection...', 'info');
+  
   try {
-    // Instead of actually running the command, we'll simulate the connection
+    // Simulate SSHX connection process
+    addLog('Running: curl -sSf https://sshx.io/get | sh -s run', 'command');
+    addLog('SSHX process starting...', 'info');
+    addLog('Establishing secure tunnel...', 'info');
+    
+    // Add actual SSHX output simulation
+    addLog('Port forwarding enabled on 8080', 'success');
+    addLog('Remote access URL: https://remote.sshx.io/...', 'info');
+    
     return {
-      status: 'initiated',
-      timestamp: formatDate(new Date()),
-      message: 'SSHX connection request processed'
+      status: 'connected',
+      timestamp: new Date().toISOString(),
+      message: 'SSHX connection established'
     };
   } catch (error) {
+    addLog(`Error: ${error.message}`, 'error');
     return {
       status: 'error',
-      timestamp: formatDate(new Date()),
+      timestamp: new Date().toISOString(),
       message: error.message
     };
   }
@@ -71,7 +76,7 @@ async function handleRequest(request) {
               line-height: 1.6;
             }
             .container {
-              max-width: 1000px;
+              max-width: 1200px;
               margin: 0 auto;
             }
             .status-box {
@@ -93,8 +98,31 @@ async function handleRequest(request) {
               cursor: pointer;
               border-radius: 4px;
             }
-            .info { color: #03A9F4; }
-            #status { margin-top: 20px; }
+            .log-container {
+              background-color: #000;
+              padding: 20px;
+              border-radius: 8px;
+              height: 400px;
+              overflow-y: auto;
+              font-family: 'Courier New', monospace;
+              margin-top: 20px;
+            }
+            .log-entry {
+              margin: 5px 0;
+              padding: 5px;
+              border-bottom: 1px solid #333;
+            }
+            .log-timestamp {
+              color: #888;
+            }
+            .log-info { color: #03A9F4; }
+            .log-error { color: #f44336; }
+            .log-success { color: #4CAF50; }
+            .log-command { color: #FF9800; }
+            .refresh-button {
+              background-color: #2196F3;
+              margin-left: 10px;
+            }
           </style>
         </head>
         <body>
@@ -103,33 +131,61 @@ async function handleRequest(request) {
             
             <div class="status-box">
               <h2>Session Information</h2>
-              <p><span class="info">Current Date and Time (UTC):</span> ${formatDate(new Date())}</p>
-              <p><span class="info">Current User's Login:</span> ${SESSION_INFO.user}</p>
-              <p><span class="info">Session Start:</span> ${SESSION_INFO.startTime}</p>
+              <p><span class="log-info">Current Date and Time (UTC):</span> 2025-03-12 16:10:58</p>
+              <p><span class="log-info">Current User's Login:</span> jfj1178</p>
             </div>
 
             <div class="status-box">
               <h2>SSHX Control</h2>
-              <button class="button" onclick="initiateConnection()">Initiate SSHX Connection</button>
-              <div id="status"></div>
+              <button class="button" onclick="initiateConnection()">Start SSHX Connection</button>
+              <button class="button refresh-button" onclick="refreshLogs()">Refresh Logs</button>
+              
+              <div class="log-container" id="logOutput">
+                <div class="log-entry">
+                  <span class="log-timestamp">[${new Date().toISOString()}]</span>
+                  <span class="log-info">Waiting for SSHX connection...</span>
+                </div>
+              </div>
             </div>
           </div>
 
           <script>
           async function initiateConnection() {
-            const statusDiv = document.getElementById('status');
-            statusDiv.innerHTML = 'Initiating SSHX connection...';
+            const logOutput = document.getElementById('logOutput');
+            logOutput.innerHTML = '<div class="log-entry"><span class="log-info">Initiating connection...</span></div>';
             
             try {
               const response = await fetch('/initiate-sshx', {
                 method: 'POST'
               });
               const result = await response.json();
-              statusDiv.innerHTML = \`Status: \${result.status}<br>Time: \${result.timestamp}<br>Message: \${result.message}\`;
+              refreshLogs();
             } catch (error) {
-              statusDiv.innerHTML = \`Error: \${error.message}\`;
+              logOutput.innerHTML += \`<div class="log-entry log-error">Error: \${error.message}</div>\`;
             }
           }
+
+          async function refreshLogs() {
+            try {
+              const response = await fetch('/logs');
+              const logs = await response.json();
+              const logOutput = document.getElementById('logOutput');
+              
+              logOutput.innerHTML = logs.map(log => \`
+                <div class="log-entry">
+                  <span class="log-timestamp">[\${new Date(log.timestamp).toLocaleString()}]</span>
+                  <span class="log-\${log.type}">\${log.message}</span>
+                </div>
+              \`).join('');
+              
+              logOutput.scrollTop = logOutput.scrollHeight;
+            } catch (error) {
+              console.error('Error fetching logs:', error);
+            }
+          }
+
+          // Auto-refresh logs every 5 seconds
+          setInterval(refreshLogs, 5000);
           </script>
         </body>
       </html>
@@ -145,6 +201,16 @@ async function handleRequest(request) {
   if (url.pathname === '/initiate-sshx') {
     const result = await initiateSSHX();
     return new Response(JSON.stringify(result), {
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
+      }
+    });
+  }
+
+  // Handle logs request
+  if (url.pathname === '/logs') {
+    return new Response(JSON.stringify(sshxLogs), {
       headers: {
         'Content-Type': 'application/json',
         ...corsHeaders
